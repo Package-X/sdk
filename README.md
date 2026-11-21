@@ -35,6 +35,7 @@ The SDK is the build workforce of PackageX. The Engine owns project interpretati
 - [SDK packages, components and manifests](plan/architecture/package-and-component-model.md)
 - [Compatibility and catalog model](plan/architecture/compatibility-and-catalog.md)
 - [Manual release workflow](plan/release/manual-release-workflow.md)
+- [Upstream integration map and implementation recipes](plan/implementation/upstream-integration-map.md)
 
 ## Related repositories
 

@@ -54,8 +54,15 @@ The full commit SHA, internal semantic version metadata, workflow run, target an
 | [Package/component model](architecture/package-and-component-model.md) | Components, target packages, manifests, dependencies, immutability and provenance |
 | [Compatibility/catalog](architecture/compatibility-and-catalog.md) | API/Engine compatibility, Stable/Nightly identities, signed catalogs and revocation |
 | [Manual release workflow](release/manual-release-workflow.md) | Manual Actions dispatch, target matrix, compile/test/package/publish and catalog promotion |
+| [Upstream integration map](implementation/upstream-integration-map.md) | Concrete upstream crates/tools, API capabilities, platform build recipes, licensing, known gaps and proof-of-concept sequence |
 
-## 4. End-to-end build pipeline
+## 4. Implementation approach and evidence
+
+The SDK uses established open-source format implementations behind PackageX adapters. The new [Upstream Integration Map](implementation/upstream-integration-map.md) records the specific candidates and how to integrate them. It labels verified capabilities, candidates, external workers and known gaps; it is not a dependency lockfile and does not claim the adapters have been implemented. Upstream versions, feature flags, licenses and maintenance status must be rechecked before pinning.
+
+The intended pattern is to reuse libraries for file/container formats, use native platform tools for authoritative final validation/signing, and write PackageX glue only where the upstream interface does not cover the required Engine contract.
+
+## 5. End-to-end build pipeline
 
 1. Engine validates the .px project and creates a normalized build request.
 2. PackX ensures that a compatible SDK package is installed and selects a Toolchain.
@@ -69,7 +76,7 @@ The full commit SHA, internal semantic version metadata, workflow run, target an
 
 The process boundary (in-process library, worker executable, or both behind a transport-neutral contract) remains an implementation decision. The request/result semantics must not depend on that transport.
 
-## 5. Release output layout
+## 6. Release output layout
 
 The release workflow stages target output beneath the requested path pattern:
 
@@ -92,7 +99,7 @@ The requested primary artifact location is **sdk/<platform>-<architecture>-<os>/
 
 Generated binaries should normally be uploaded as Actions artifacts and immutable GitHub Release assets, not committed as ordinary source files.
 
-## 6. Decisions captured
+## 7. Decisions captured
 
 - [x] Engine and SDK communicate through a versioned two-way contract.
 - [x] Engine orchestrates; SDK components perform target-specific work.
@@ -106,7 +113,7 @@ Generated binaries should normally be uploaded as Actions artifacts and immutabl
 - [x] No user-facing build speed tiers.
 - [x] Unneeded target components must not be downloaded merely because they exist.
 
-## 7. Open decisions before implementation
+## 8. Open decisions before implementation
 
 1. Exact role of lib.exe and corresponding names/types for macOS/Linux.
 2. In-process, worker-process or dual transport for the SDK contract.
