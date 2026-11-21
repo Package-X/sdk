@@ -168,7 +168,9 @@ Unsupported operations return unsupported. They must never silently rebuild the 
 
 Default behavior preserves the source and writes to a new output path. In-place mode is opt-in and requires a recoverable backup, effective lock, staged/transactional mutation, successful verification and explicit signature consequences.
 
-A logically small edit may trigger a larger physical rewrite inside the compound storage file. Do not advertise byte-range preservation.
+The Rust `cfb` implementation supports stream resizing and in-place logical mutation, but a compound file does not physically shrink in place when streams are removed or truncated. Its `CompoundFile::copy_to` API creates a compacted copy in a new destination. This is another reason PackageX defaults to a staged output: the writer can apply logical changes, compact when appropriate, reopen and verify the result, and only then publish it. Do not advertise byte-range preservation.
+
+Reference: [cfb crate](https://docs.rs/cfb/latest/cfb/), including `CompoundFile::copy_to`.
 
 ## 7. MST transform output
 
