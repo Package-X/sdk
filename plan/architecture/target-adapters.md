@@ -130,7 +130,7 @@ Some operations are portable cross-host operations. Others require host-specific
 - SDK owns temporary transformed resources created during the request.
 - SDK returns output artifacts with explicit ownership/lifetime metadata.
 - PackX owns installed SDK files and package cache metadata.
-- PackageX Runtime owns end-user installed application/runtime files.
+- The installed application and its runtime are owned by the end-user installation transaction defined by the Engine. Each installer embeds only the restricted helper operations it needs; there is no global runtime service or shared Electron store.
 
 Avoid redundant copies. Use streaming providers and verified immutable content references where safe.
 
