@@ -87,6 +87,8 @@ The build-time logical source descriptor may be named electron-runtime.ref.json,
 
 The SDK serializes it into an opaque authenticated control block stored beside the application payload in the installer's payload region. It is part of the protected payload, not a public top-level JSON manifest.
 
+The confidentiality guarantee applies to PackageX's internal runtime reference and operation/layout plan. Native formats may still expose metadata required by the operating system (for example, MSI database properties, the MSIX package manifest, PE headers, package identity, publisher and signature information). PackageX cannot hide required native metadata and still promise normal OS installation, registration and signature verification. Whole-payload password sealing remains a separate optional mode where the selected format supports it.
+
 Conceptual final installer layout:
 
 ~~~text
