@@ -50,7 +50,8 @@ The full commit SHA, internal semantic version metadata, workflow run, target an
 | [Writers and transactions](architecture/writers-and-transactions.md) | Common writer lifecycle, typed changes, staged transactions, MSI database editing, MST transforms and signatures |
 | [Target adapters](architecture/target-adapters.md) | Target dimensions, platform writers, output directory, primary SDK artifact and auxiliary pieces |
 | [Electron](architecture/electron.md) | Electron detection, app-only payload optimization, opaque runtime reference, restricted installer helper, immutable runtime restoration and updater staging |
-| [Installation scope](architecture/installation-scope.md) | Per-user and machine-wide policy, native format capability matrix and cross-OS scope constraints |\n| [Payload optimization](architecture/payload-optimization.md) | Whole-file deduplication, content-defined chunks, Zstandard policy and build reports |
+| [Installation scope](architecture/installation-scope.md) | Per-user and machine-wide policy, native format capability matrix and cross-OS scope constraints |
+| [Payload optimization](architecture/payload-optimization.md) | Whole-file deduplication, content-defined chunks, Zstandard policy and build reports |
 | [Package/component model](architecture/package-and-component-model.md) | Components, target packages, manifests, dependencies, immutability and provenance |
 | [Compatibility/catalog](architecture/compatibility-and-catalog.md) | API/Engine compatibility, Stable/Nightly identities, signed catalogs and revocation |
 | [Manual release workflow](release/manual-release-workflow.md) | Manual Actions dispatch, target matrix, compile/test/package/publish and catalog promotion |
