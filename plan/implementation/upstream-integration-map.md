@@ -46,7 +46,7 @@ Do not turn a Good candidate into a hard runtime dependency before the proof-of-
 | px-writer-rpm | rpm crate | Build RPM metadata and payload | Not a complete replacement for rpmbuild or the system RPM database |
 | px-writer-appimage | appimagetool / its Rust implementation, uruntime, mkdwarfs; backhand for SquashFS-specific work | Build AppDir into AppImage | Current appimagetool path uses a runtime and DWARFS; backhand is not a drop-in replacement for that pipeline |
 | px-writer-flatpak | Official flatpak-builder, flatpak, OSTree tools | Generate a Flatpak manifest and invoke the established build/export pipeline | Run in an isolated Linux build environment; don't reimplement OSTree |
-| px-electron | Electron distribution layout, @electron/get, @electron/asar, Electron Fuses | Inspect app/runtime split and produce app-only/runtime descriptors | Do not remove Chromium bytes from an arbitrary executable |
+| px-electron | Electron distribution layout, @electron/get, @electron/asar, @electron/rebuild, Electron Fuses | Detect Electron, preserve original app layout, build app-only payload where supported, encode protected runtime reference and package a restricted installer helper | No arbitrary binary surgery, loose public .ref.json sidecar, global end-user runtime store or additional Electron launcher |
 | px-pdc | fastcdc, zstd, SHA-256 implementation already chosen by the Engine | Deduplicate/chunk/compress SDK payload inputs | Pin chunker version and codec settings in the payload format |
 
 The names above are planned PackageX components. They are not claims that these crates or adapters already exist in this repository.
@@ -464,18 +464,20 @@ References:
 
 ---
 
-## 7. Electron: reuse the actual distribution ecosystem
+## 7. Electron: preserve the native app layout and restore exact runtime when supported
+
+Electron is a first-class SDK build capability. The SDK detects the app/runtime boundary, creates the application payload and produces a protected runtime reference for the installer. It does not create an end-user runtime manager, shared runtime store, or additional Electron launcher.
 
 ### 7.1 Do not binary-surgery electron.exe
 
 Electron's normal distribution already separates:
 - Electron runtime executable and helper files;
 - application content in resources/app or resources/app.asar;
-- optional app.asar.unpacked files and native modules.
+- optional app.asar.unpacked files, native modules and companion resources.
 
-The Chromium engine is part of the runtime executable and companion runtime distribution. It is not a stable, removable byte range in an arbitrary app executable.
+Chromium is part of the runtime executable and companion distribution. It is not a stable removable byte range inside an arbitrary application executable. Do not extract Chromium from an opaque EXE or patch signed runtime binaries to manufacture an app-only package.
 
-### 7.2 Inspect and prepare application payload
+### 7.2 Detect and prepare the application payload
 
 Use the official Electron packaging layout as the canonical input contract:
 - [Electron Application Packaging](https://www.electronjs.org/docs/latest/tutorial/application-distribution)
@@ -483,63 +485,85 @@ Use the official Electron packaging layout as the canonical input contract:
 
 For ASAR archives:
 - [@electron/asar](https://github.com/electron/asar) is the upstream pack/list/extract implementation.
-- ASAR is an indexed, uncompressed archive with random access.
-- The header is a JSON tree encoded using Electron's Pickle framing.
-- Identical file contents can share one stored data offset.
-- Unpacked files must remain on disk under the matching .asar.unpacked layout.
+- Preserve the ASAR digest, unpacked inventory and native-module list.
+- Unpacked files remain on disk under the matching app.asar.unpacked layout.
+- Never hide native .node modules or files that must be opened directly from the filesystem inside ASAR.
 
-Integration:
-1. If the project supplies app.asar, preserve it as an application payload resource and inspect its header.
-2. If the project supplies a normal application directory and requests ASAR, invoke a pinned @electron/asar helper inside an isolated, versioned Node tool component.
-3. Preserve unpack rules and verify every external unpacked file.
-4. Record the ASAR digest, unpacked inventory and native-module list.
-5. Avoid requiring Node just to copy an already packaged ASAR application; the Node-based helper is an optional capability only when ASAR creation/extraction is required.
+The SDK detects standard packaged Electron layouts, source projects with lockfiles, and known packager output. It records confidence and exact version/build identity. Ambiguous or customized binaries are preserved as bundled input; the SDK must not substitute stock Electron unless identity is proven.
 
-The current @electron/asar CLI documents Node.js 22.12.0 or later. That runtime requirement belongs to the optional ASAR helper Toolchain dependency, not the entire PackageX Engine.
+If an interactive build detects Electron, the Engine asks whether to use recommended Electron optimization settings. The SDK reports detection and capability; the Engine owns the prompt. Yes enables the default profile, no preserves the full distribution. A non-interactive build must set the choice explicitly and must not hang waiting for input.
 
-### 7.3 Download the exact Electron runtime
+### 7.3 Exact runtime reference and download resolution
 
-Electron's upstream [@electron/get](https://github.com/electron/get) is the reference implementation for release artifact resolution. It supports:
+Electron's upstream [@electron/get](https://github.com/electron/get) is the reference for exact release artifact resolution. It provides useful behavior for:
 - exact Electron version;
 - OS and architecture;
-- release artifact naming;
-- custom mirror settings;
-- local download caching;
-- progress reporting;
-- proxy-aware download behavior.
+- artifact naming;
+- custom mirror support;
+- verified download caching and progress;
+- proxy-aware downloads.
 
-PackageX does not have to require a Node runtime for its own downloader. px-electron can implement the same documented artifact-resolution contract using the SDK's HTTP/download foundation, while using the upstream helper as a behavior reference and test oracle.
+The SDK may implement the required native Rust downloader without requiring Node.js. @electron/get remains an upstream behavior/reference integration. @electron/asar, @electron/packager, @electron/rebuild and @electron/fuses remain build-side SDK dependencies or reference tools; the embedded installer helper does not require Node.js.
 
-Runtime artifact flow:
-1. Read the app's exact Electron version from trusted project metadata/lockfile or a known packaged binary.
-2. Resolve the official binary artifact for that version/platform/architecture.
-3. Resolve its official expected checksum metadata.
-4. Check the signed PackageX runtime catalog for the pinned digest and accepted upstream artifact identity.
-5. Download with progress to a temporary content-addressed cache.
-6. Verify the signed PackageX digest; optionally cross-check Electron's published SHASUMS256.txt metadata.
-7. Extract safely, verify target architecture and expected runtime file inventory.
-8. Register the runtime as immutable.
-9. Produce the app-only installer plus a signed runtime descriptor.
+The runtime reference identifies:
+- exact Electron version and build identity;
+- target OS and architecture;
+- exact version-pinned release artifact URL (never a floating latest URL);
+- archive format, expected size and full SHA-256 digest;
+- extracted runtime inventory/tree digest;
+- original app-relative runtime paths and named payload destination slots;
+- ABI/native module requirements, fuse/customization profile and license inventory;
+- schema version, application payload identity and installer layout identity.
 
-A mirror may change the URL but cannot change the digest trusted by PackageX. A checksum served only by the same untrusted mirror is not a trust root.
+The SDK may use JSON as its internal build-time source representation. The final installer must not expose a loose readable .ref.json file. It serializes the reference into an opaque authenticated control block alongside the application payload. The format writer maps logical slot IDs to the final payload locations; the helper never accepts arbitrary offsets.
 
-### 7.4 Reuse and delivery policies
+### 7.4 Protected control block and restricted embedded helper
 
-- **Bundled:** application and runtime are in the installer.
-- **Managed:** app payload is installed; a compatible immutable runtime is reused or downloaded during installation.
-- **Deferred:** first launch resolves/downloads the exact runtime, with retry, cancellation and offline failure behavior.
+The final installer binds the control block to the authenticated installer layout and publisher authorization. Default opaque protection hides internal paths, URLs and operation metadata from casual inspection, while AEAD authentication detects tampering. This is not password-grade secrecy from the machine owner: a local executable that must decrypt data cannot keep its decryption behavior secret from a determined local reverse engineer.
 
-Share only exact runtime builds whose hash, fuses, architecture and binary customization identity match. Application resources and native modules remain per application. A per-app runtime view must be tested on each platform; if the launcher/layout cannot safely reference a shared runtime, fall back to an app-local runtime.
+Integrity and authorization come from the signed installer/publisher identity, authenticated control data, build-time-pinned artifact digest, applicable OS-native signature verification, and strict capability/path restrictions—not encryption alone.
 
-Electron fuse changes happen before code signing. Any fuse change or runtime binary customization changes the runtime content identity and can prevent sharing.
+The installer embeds a target-specific restricted helper (the Windows implementation may be named script.exe internally). Its capabilities are limited to reading the authenticated plan, downloading only the exact authorized artifact, checking size/hash/signatures, safely extracting within limits, verifying the extracted inventory and writing only to named logical slots inside the active install transaction. It rejects arbitrary URLs, arbitrary paths/offsets, downloaded scripts, unapproved executable launches and writes outside its transaction staging root. It never rewrites the currently running installer EXE in place.
+
+The helper is not PackageX.exe, a package manager, a global runtime service or a general-purpose script runner. Developer .s.px hooks retain their independent WASM capability model. The developer's optional custom updater executable is a separate trust/privilege boundary.
+
+### 7.5 Runtime restoration is native-format dependent
+
+The SDK does not claim that app-only runtime restoration works in every installer format:
+
+| Target | Planning capability | Restriction |
+|---|---|---|
+| Windows custom EXE overlay | Candidate for app-only restore | Helper restores into same-volume install staging, verifies, then commits transactionally. |
+| Windows MSI | Candidate, requires MSI transaction proof | Helper/custom-action or bootstrap path must respect Windows Installer repair, rollback and install-context semantics. |
+| Windows MSIX | No direct install-time insertion | Package files are OS-managed/read-only and signed. Keep Electron bundled unless a separate signed dependency/package design is proven. |
+| macOS PKG | Conditional | Do not add files to a signed .app after its resource seal is created. An external-runtime application design needs explicit signing/notarization validation. |
+| macOS DMG drag-and-drop | No embedded helper invocation | Ordinary drag-copy does not execute an installer helper. Keep Electron bundled. |
+| Linux DEB/RPM | Candidate with native maintainer hooks | Must respect package-manager transaction/privilege semantics and per-distro testing. |
+| Linux AppImage | No helper in ordinary direct execution | Keep Electron bundled unless a separate installer/bootstrap workflow is explicitly selected. |
+| Linux Flatpak | No mutation of deployed package | Use bundled Electron or a separately designed Flatpak runtime/extension; do not edit immutable deployments. |
+
+If the selected format cannot safely restore the runtime, the target reports unsupported for app-only optimization. A bundled fallback is used only when the developer's policy explicitly permits it.
+
+### 7.6 First install and updates
+
+For an eligible target, the helper authenticates the installer/reference, downloads the exact pinned artifact to staging, verifies expected size and full SHA-256, applies available OS-native signature checks, safely extracts and validates its inventory, then restores runtime files to their original relative paths. The original application executable remains the launch entry. No PackageX Electron launcher is created.
+
+The current installed runtime belongs to the installed application generation; it is not a cache. During updates:
+- keep the current application/runtime generation running;
+- if the runtime identity is unchanged, do not download Electron again;
+- otherwise stage only the exact runtime needed by the newest applicable application release;
+- retain at most one pending runtime/generation, discarding a superseded pending release;
+- wait for the application to exit, then commit app payload and runtime together;
+- health-check the new generation and retain the old generation for rollback until healthy.
+
+There is no end-user shared runtime store, version library, global cache, reference counting or PackageX runtime service. A separate SDK-side verified developer cache may reuse exact release archives across builds.
 
 References:
-- [Electron installation and custom mirrors/caches](https://www.electronjs.org/docs/latest/tutorial/installation)
-- [@electron/get](https://github.com/electron/get)
+- [Electron installation and downloads](https://www.electronjs.org/docs/latest/tutorial/installation)
 - [Electron Fuses](https://www.electronjs.org/docs/latest/tutorial/fuses)
-- [@electron/asar](https://github.com/electron/asar)
+- [Electron ASAR integrity](https://www.electronjs.org/docs/latest/tutorial/asar-integrity)
+- [SDK Electron architecture](../architecture/electron.md)
 
----
 
 ## 8. Payload optimization: use established chunking and codec implementations
 
@@ -649,7 +673,7 @@ For apple-flat-package, apple-bom, apple-dmg, apple-xar, cpio-archive, fastcdc, 
 6. **DEB/RPM:** create packages from one Engine resource inventory and compare metadata/contents using native distro tools and clean containers.
 7. **AppImage:** build from AppDir and launch on the minimum supported Linux baseline.
 8. **Flatpak:** generate a manifest, build/export in an isolated Linux runner, install into a test user runtime and verify permissions.
-9. **Electron:** extract app payload from a normal packaged Electron directory, build an app-only installer and descriptor, download an exact runtime, then launch with shared and app-local modes.
+9. **Electron:** exercise detection, app-only payload construction, protected reference encoding, restricted-helper restoration on supported formats and immutable app/runtime update generations; verify bundled fallback on formats that cannot safely reconstruct signed or immutable packages.
 10. **PDC:** benchmark whole-file dedup, FastCDC and Zstandard independently; then test combinations on real application payloads including Electron.
 
 Each step produces:
