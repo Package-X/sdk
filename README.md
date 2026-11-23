@@ -11,7 +11,7 @@ The SDK is the build workforce of PackageX. The Engine owns project interpretati
 - **PackageX Engine** parses and validates projects, resolves target intent, prepares resources and build plans, selects SDK capabilities, and decides whether returned artifacts satisfy the build.
 - **PackageX SDK** implements target-specific writers, format adapters, resource handling, compression/deduplication, Electron analysis and packaging, artifact verification, and build reporting.
 - **PackX** installs and maintains Engine versions and SDK packages, resolves compatibility, and constructs a compatible Toolchain for a build.
-- **PackageX Runtime** executes installer behavior on the end-user system. Build-time SDK tooling is not a prerequisite for an installed application.
+- **Embedded installer helper** is part of each installer and performs only operations authorized by its protected install plan. There is no end-user PackageX runtime manager or global Electron runtime cache.
 
 ## Core design rules
 
@@ -19,7 +19,7 @@ The SDK is the build workforce of PackageX. The Engine owns project interpretati
 2. The Engine and SDK communicate through a versioned, two-way build contract. The Engine supplies structured inputs; the SDK returns structured outputs and diagnostics.
 3. Writers support artifact creation and format-aware modification. Mutable formats use explicit transaction, validation, commit, and rollback semantics.
 4. MSI editing is database-aware. PackageX must not patch arbitrary byte offsets or promise physical byte-range preservation.
-5. Electron application payloads and Electron runtime payloads are separate deliverables when safe. Runtime acquisition uses an exact version, OS, architecture, and integrity identity.
+5. Electron support is build-time SDK functionality: the SDK can separate the app payload from an exact Electron runtime and encode a protected runtime reference into the installer. A restricted embedded helper restores it only for formats that support this safely; the app keeps its original executable and layout.
 6. Payload optimization uses deduplication and compression only where it produces a real benefit. Native installer formats retain native structure and semantics.
 7. Stable SDK packages use semantic versions. Nightly packages are visibly identified by an eight-character source commit, with full commit and internal semantic-version metadata retained. There is no Beta channel.
 8. SDK release publication is manually initiated and controlled through GitHub Actions.
@@ -31,6 +31,7 @@ The SDK is the build workforce of PackageX. The Engine owns project interpretati
 - [Writer lifecycle and transactional editing](plan/architecture/writers-and-transactions.md)
 - [Target adapters and compiled SDK layout](plan/architecture/target-adapters.md)
 - [Electron application and runtime handling](plan/architecture/electron.md)
+- [Installation scope: per-user and machine-wide](plan/architecture/installation-scope.md)
 - [Payload deduplication and compression](plan/architecture/payload-optimization.md)
 - [SDK packages, components and manifests](plan/architecture/package-and-component-model.md)
 - [Compatibility and catalog model](plan/architecture/compatibility-and-catalog.md)
