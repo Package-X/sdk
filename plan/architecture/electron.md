@@ -225,10 +225,11 @@ References:
 
 - Inspect/report Electron fuse state. Fuse changes are explicit and occur before final signing.
 - ASAR integrity metadata must match the final app.asar and must be bound to the app's release identity.
-- Do not place app-specific ASAR integrity metadata into a shared runtime identity.
+- ASAR integrity metadata is app/release-specific. If the selected Electron version embeds the ASAR hash into an executable resource or signed bundle metadata, that modified binary is no longer the stock upstream artifact and must not be fetched/installed as though it were unchanged.
 - Native .node modules remain app-specific and must match the exact Electron ABI/architecture.
-- If Electron branding changes runtime executable bytes, that runtime is no longer the unmodified upstream artifact. Its custom runtime identity and digest must be separately supplied and trusted by the developer.
-- Never patch the original executable or mutate signed application content merely to fit the PackageX payload format.
+- If ASAR integrity, fuses, branding or another customization changes runtime executable bytes, the result is an application-specific runtime artifact. Its exact final digest, signature and acquisition source must be supplied/approved at build time; the installer must not silently download the stock upstream archive and assume it matches.
+- App-only optimization for a customized runtime is allowed only when the SDK can prove the complete final runtime generation can be reconstructed and verified (for example, using a developer-hosted exact customized archive with its own pinned digest/signature). Otherwise preserve that runtime with the bundled application and report the optimization as unsupported for that target.
+- Never patch the original executable or mutate signed application content on the end-user machine merely to fit the PackageX payload format.
 
 ## 11. Open-source SDK integrations
 
