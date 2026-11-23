@@ -9,7 +9,7 @@ This repository specifies and will eventually contain the build-side SDK package
 | PackageX Engine ([packagex](https://github.com/Package-X/packagex)) | Project parsing, validation, normalized build IR, target selection, resource inventory, build orchestration and artifact acceptance | Global SDK installation or every target writer implementation |
 | PackageX SDK (this repository) | Target SDK components, writers, format adapters, SDK-side resource transforms, Electron analysis/package preparation, verification and build reports | Project policy, global SDK installation or Engine version routing |
 | PackX ([packx](https://github.com/Package-X/packx)) | Thin shim, Toolbelt installation, SDK acquisition, compatibility lookup, CAS, locks, offline import/export and Toolchain selection | Replacing project semantics or implementing all target formats |
-| PackageX Runtime | End-user installer behavior and approved optional runtime acquisition | Developer-side SDK compilation |
+| Embedded installer helper (inside each installer) | Executes only installer-authorized operations such as exact Electron runtime acquisition and restoration | Global runtime service, package manager, or end-user PackageX executable |
 
 ## 2. Architectural baseline
 
@@ -49,8 +49,8 @@ The full commit SHA, internal semantic version metadata, workflow run, target an
 | [Build contract](architecture/build-contract.md) | Build lifecycle, Engine inputs, SDK outputs, request/result models, transport boundary and performance behavior |
 | [Writers and transactions](architecture/writers-and-transactions.md) | Common writer lifecycle, typed changes, staged transactions, MSI database editing, MST transforms and signatures |
 | [Target adapters](architecture/target-adapters.md) | Target dimensions, platform writers, output directory, primary SDK artifact and auxiliary pieces |
-| [Electron](architecture/electron.md) | Input inspection, app/runtime separation, managed runtime store, downloads, sharing and fallback |
-| [Payload optimization](architecture/payload-optimization.md) | Whole-file deduplication, content-defined chunks, Zstandard policy and build reports |
+| [Electron](architecture/electron.md) | Electron detection, app-only payload optimization, opaque runtime reference, restricted installer helper, immutable runtime restoration and updater staging |
+| [Installation scope](architecture/installation-scope.md) | Per-user and machine-wide policy, native format capability matrix and cross-OS scope constraints |\n| [Payload optimization](architecture/payload-optimization.md) | Whole-file deduplication, content-defined chunks, Zstandard policy and build reports |
 | [Package/component model](architecture/package-and-component-model.md) | Components, target packages, manifests, dependencies, immutability and provenance |
 | [Compatibility/catalog](architecture/compatibility-and-catalog.md) | API/Engine compatibility, Stable/Nightly identities, signed catalogs and revocation |
 | [Manual release workflow](release/manual-release-workflow.md) | Manual Actions dispatch, target matrix, compile/test/package/publish and catalog promotion |
