@@ -548,6 +548,8 @@ If the selected format cannot safely restore the runtime, the target reports uns
 
 For an eligible target, the helper authenticates the installer/reference, downloads the exact pinned artifact to staging, verifies expected size and full SHA-256, applies available OS-native signature checks, safely extracts and validates its inventory, then restores runtime files to their original relative paths. The original application executable remains the launch entry. No PackageX Electron launcher is created.
 
+ASAR integrity metadata and fuse settings may alter an Electron executable or signed bundle on a per-application basis. When that happens, the stock upstream archive is not the final runtime identity: use an exact developer-supplied customized runtime artifact with its own pinned digest/signature, or keep the runtime bundled. Never download a stock archive and silently assume it reproduces an app-specific signed binary.
+
 The current installed runtime belongs to the installed application generation; it is not a cache. During updates:
 - keep the current application/runtime generation running;
 - if the runtime identity is unchanged, do not download Electron again;
