@@ -154,3 +154,22 @@ A target SDK package is eligible only when:
 3. Static linking, dynamic plugin loading or worker-process model.
 4. Which operations need native host APIs versus portable implementations.
 5. One archive per target or a signed manifest referencing independently hashed sub-artifacts.
+
+
+## 11. Installer scope and embedded-helper capability
+
+Each target adapter reports native installation-scope and execution capabilities independently. A target package must not claim that the same install helper, privilege model or Electron runtime reconstruction works identically across all formats.
+
+The capability handshake includes:
+- supported install scope values: user, machine, and choice where meaningful;
+- native package staging versus app registration/provisioning behavior;
+- privilege requirements for installation and update operations;
+- whether an installer-embedded restricted helper can execute;
+- whether Electron application/runtime separation and reconstruction are supported;
+- whether post-install mutation would invalidate native signatures or package immutability;
+- scheduler, uninstaller and registration scope support.
+
+The SDK's [Installation Scope plan](installation-scope.md) owns the cross-format scope matrix. Its [Electron plan](electron.md) owns the format-specific runtime-restoration matrix. The target adapter must return unsupported for combinations it cannot preserve safely; the Engine decides whether an explicitly permitted bundled fallback is acceptable.
+
+The embedded installer helper is a target artifact packaged into each installer that needs its capabilities. It is not a global PackageX runtime manager and is not installed as an independent PackageX-branded executable. Its allowed writes are constrained to authenticated logical payload slots in the active install transaction.
+
