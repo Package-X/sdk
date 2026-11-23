@@ -101,7 +101,7 @@ The Engine should not copy every project file into a huge serialized request. Us
 
 The provider must not resolve arbitrary paths supplied by an untrusted manifest. IDs resolve only through the Engine-controlled provider or a narrowly scoped staging root.
 
-Resource types may include ordinary files/directories, generated manifests, compiled .pxs UI, .s.px WebAssembly, Electron app archives/runtime descriptors, MSI streams/cabinets and target-specific resource objects.
+Resource types may include ordinary files/directories, generated manifests, compiled .pxs UI, .s.px WebAssembly, Electron application payloads, protected Electron runtime-reference control blocks and runtime archive resources, MSI streams/cabinets and target-specific resource objects. The reference's final encoded form and slot mapping are created by the SDK writer; the Engine receives only declared artifact/capability metadata.
 
 ## 6. Conceptual result schema
 
@@ -145,6 +145,9 @@ The SDK must report:
 - package ID, package version, full source commit and API compatibility;
 - supported OS/architecture combinations and output formats;
 - supported operations per format (create, inspect, modify, transform, verify, sign);
+- native installation-scope capabilities for formats that expose install semantics (per-user, machine-wide, user registration, machine provisioning, and required privilege);
+- whether the target format can execute the embedded restricted installer helper;
+- whether Electron runtime separation/restoration is supported for that format and under which signing/layout constraints;
 - required/optional components and runtime dependencies;
 - minimum Engine version and tested compatibility range;
 - host restrictions and target-specific caveats;
